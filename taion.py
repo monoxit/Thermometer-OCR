@@ -48,7 +48,10 @@ for (i, image_path) in enumerate(image_paths):
 
     # 画像ファイルから撮影日時取得
     img_exif = Image.open(image_path)
-    exif = { ExifTags.TAGS[k]: v for k, v in img_exif._getexif().items() if k in ExifTags.TAGS }
+    
+    exif = { ExifTags.TAGS[k]: v for k, v in img_exif._getexif().items()
+             if k in ExifTags.TAGS }
+             
     print(exif['DateTimeOriginal'])
     date_time = exif['DateTimeOriginal'].split()
     date_time[0]=date_time[0].replace(':','/')
@@ -62,19 +65,22 @@ for (i, image_path) in enumerate(image_paths):
 
     # グレースケールに変換
     gray = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
-
+    
+    # ヒストグラムを平坦化
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    gray = clahe.apply(gray)
+    
     # ぼかして均一化
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
     # 輪郭だけにする
     edged = cv2.Canny(blurred, 50, 200, 255)
     
-    #cv2.imshow('edged', edged)
-    #cv2.waitKey(100)
-    
     # 輪郭検出
-    contours, hierarchy = cv2.findContours(edged, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(edged, cv2.RETR_TREE,
+                                            cv2.CHAIN_APPROX_SIMPLE)
     
+    min_w = 500
     # 検出された輪郭の数繰り返してLCD部分検出
     for cnt in contours:
     
@@ -88,39 +94,62 @@ for (i, image_path) in enumerate(image_paths):
         if len(approx) == 4:
         
             # 輪郭の周りを四角い枠で囲った枠の位置（XY座標）と幅と高さを得る
-            [lcd_x, lcd_y, lcd_w, lcd_h] = cv2.boundingRect(cnt)
-            
-            # resized_imageに赤色の四角を描画する
-            cv2.rectangle(resized_image, (lcd_x, lcd_y), (lcd_x + lcd_w, lcd_y + lcd_h), (0, 0, 255), 2)
-            
-            # 近似図形で画像を切り取りlcdに入れる
-            lcd = resized_image[lcd_y:lcd_y+lcd_h, lcd_x:lcd_x+lcd_w]
-            break
+            #[lcd_x, lcd_y, lcd_w, lcd_h] = cv2.boundingRect(cnt)
+            box = cv2.boundingRect(cnt)
+            [lcd_x, lcd_y, lcd_w, lcd_h] = box
+
+            # 縦横比がLCDのサイズのようであれば ToDo かつ既定エリアサイズ以上なら
+            if 2 <= lcd_w / lcd_h <= 3:
+                # resized_imageに赤色の四角（LCDの候補）を描画する
+                cv2.rectangle(resized_image, (lcd_x, lcd_y),
+                              (lcd_x + lcd_w, lcd_y + lcd_h),
+                              (0, 0, 255), 1)
+                # 最小サイズを記憶
+                if lcd_w < min_w:
+                    min_w = lcd_w
+                    min_box = box
+
+    # LCDのボックス座標とサイズを取得
+    [lcd_x, lcd_y, lcd_w, lcd_h] = min_box
+    
+    # LCDに枠を描画（確認用）
+    cv2.rectangle(resized_image, (lcd_x, lcd_y),
+                  (lcd_x + lcd_w, lcd_y + lcd_h), (0, 0, 255), 2)
+
+# 近似図形で画像を切り取りlcdに入れる
+    lcd = resized_image[lcd_y:lcd_y+lcd_h, lcd_x:lcd_x+lcd_w]
     
     # lcdのサイズを得る
     height, width, channels = lcd.shape[:3]
     
     # lcdをグレースケールに変換
     gray = cv2.cvtColor(lcd, cv2.COLOR_BGR2GRAY)
+
+    # 明るさを、平均64、標準偏差16で正規化
+    gray = (gray - np.mean(gray))/np.std(gray)*16+64
+    gray = np.clip(gray, 0, 255).astype(np.uint8)
     
     # ぼかして均一化
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-
-    # 画像の数値部を際立たせるために、LCD全体に枠を描画
-    cv2.rectangle(blurred, (0, 0), (width-2, height-2), 0, 2)
+    blurred = cv2.fastNlMeansDenoising(gray,h=8)
+    print(np.mean(gray))
     
     # 画像を二値化（黒と白だけに）し、白黒反転（数値が白抜きに）
-    thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+    thresh = cv2.adaptiveThreshold(blurred, 255,
+                                   cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                   cv2.THRESH_BINARY_INV, 21, 2)
+
+    # LCDの中（数値部分）を切り取り、黒フレームに貼り付け、輪郭検出しやすくする。
+    # ToDo: Make the margins dynamic.
+    framed_image = np.full((height,width),0,np.uint8)
+    framed_image[8:height-8, 9:width-9] = thresh[8:height-8, 9:width-9]
     
     # 白抜き数値を太くして、７セグの各セグメント間をくっつける
     kernel = np.ones((3,3),np.uint8)
-    dilation = cv2.dilate(thresh,kernel,iterations = 1)
+    dilation = cv2.dilate(framed_image,kernel,iterations = 1)
 
-    #cv2.imshow('test', thresh)
-    #cv2.waitKey(100)
-    
     # 輪郭検出
-    contours, hierarchy = cv2.findContours(dilation, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(dilation, cv2.RETR_LIST,
+                                           cv2.CHAIN_APPROX_SIMPLE)
     
     # 温度数値を入れるための辞書を用意
     ondo_dict = {}
@@ -130,13 +159,17 @@ for (i, image_path) in enumerate(image_paths):
     
         # 検出した輪郭の周りを四角で囲った時の枠の位置とサイズを得る
         [x, y, w, h] = cv2.boundingRect(cnt)
-        
+ 
+        cv2.rectangle(resized_image, (lcd_x+x, lcd_y+y),
+                      (lcd_x+x+w, lcd_y+y+h), (0, 255, 0), 1)
+ 
         # 幅や高さを調べて、液晶の中に表示された数値のサイズと考えられるなら
         if w > width / 7 and w < width /4:
             if h > height / 2:
             
                 # 四角描画
-                cv2.rectangle(resized_image, (lcd_x+x, lcd_y+y), (lcd_x+x+w, lcd_y+y+h), (0, 255, 0), 2)
+                cv2.rectangle(resized_image, (lcd_x+x, lcd_y+y),
+                              (lcd_x+x+w, lcd_y+y+h), (0, 255, 0), 2)
                 
                 # 数値部分を切り取り
                 roi = thresh[y:y + h, x:x + w]
