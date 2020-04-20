@@ -164,7 +164,7 @@ for (i, image_path) in enumerate(image_paths):
                       (lcd_x+x+w, lcd_y+y+h), (0, 255, 0), 1)
  
         # 幅や高さを調べて、液晶の中に表示された数値のサイズと考えられるなら
-        if w > width / 7 and w < width /4:
+        if w > width / 15 and w < width /4:
             if h > height / 2:
             
                 # 四角描画
