@@ -8,12 +8,12 @@ This code is based on code in https://github.com/yan9yu/sdr.
 
 体温測定後スマホなどで写真撮影。後で表計算ソフトでまとめたいときに使うように作成。
 
+
+成形等していないため、真上から撮影する必要があります。
+
 ![検知結果](https://github.com/monoxit/Thermometer-OCR/blob/master/images/taionkei.jpg)
 
 ![出力](https://github.com/monoxit/Thermometer-OCR/blob/master/images/tempcsv.png)
-
-
-成形等していないため、真上から撮影する必要があります。
 
 # ToDo
 * 自動成形
