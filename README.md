@@ -10,6 +10,9 @@ This code is based on code in https://github.com/yan9yu/sdr.
 
 ![検知結果](https://github.com/monoxit/Thermometer-OCR/blob/master/images/taionkei.jpg)
 
+![出力](https://github.com/monoxit/Thermometer-OCR/blob/master/images/tempcsv.png)
+
+
 成形等していないため、真上から撮影する必要があります。
 
 # ToDo
