@@ -16,3 +16,6 @@ This code is based on code in https://github.com/yan9yu/sdr.
 * 自動成形
 * エラー処理追加
 * 精度向上
+
+# Acknowledgments
+* The 7 segment fonts images used in the dataset are DSEG fonts by Keshikan.  https://github.com/keshikan/DSEG
