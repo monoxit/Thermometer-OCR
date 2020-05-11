@@ -62,6 +62,7 @@ for (i, image_path) in enumerate(image_paths):
     # 取り込んだ画像の幅を縦横比を維持して500ピクセルに縮小
     ratio = 500 / image.shape[1]
     resized_image = cv2.resize(image, dsize=None, fx=ratio, fy=ratio)
+    image_for_checking = resized_image.copy()
 
     # グレースケールに変換
     gray = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
@@ -101,7 +102,7 @@ for (i, image_path) in enumerate(image_paths):
             # 縦横比がLCDのサイズのようであれば ToDo かつ既定エリアサイズ以上なら
             if 2 <= lcd_w / lcd_h <= 3:
                 # resized_imageに赤色の四角（LCDの候補）を描画する
-                cv2.rectangle(resized_image, (lcd_x, lcd_y),
+                cv2.rectangle(image_for_checking, (lcd_x, lcd_y),
                               (lcd_x + lcd_w, lcd_y + lcd_h),
                               (0, 0, 255), 1)
                 # 最小サイズを記憶
@@ -113,7 +114,7 @@ for (i, image_path) in enumerate(image_paths):
     [lcd_x, lcd_y, lcd_w, lcd_h] = min_box
     
     # LCDに枠を描画（確認用）
-    cv2.rectangle(resized_image, (lcd_x, lcd_y),
+    cv2.rectangle(image_for_checking, (lcd_x, lcd_y),
                   (lcd_x + lcd_w, lcd_y + lcd_h), (0, 0, 255), 2)
 
 # 近似図形で画像を切り取りlcdに入れる
@@ -160,7 +161,7 @@ for (i, image_path) in enumerate(image_paths):
         # 検出した輪郭の周りを四角で囲った時の枠の位置とサイズを得る
         [x, y, w, h] = cv2.boundingRect(cnt)
  
-        cv2.rectangle(resized_image, (lcd_x+x, lcd_y+y),
+        cv2.rectangle(image_for_checking, (lcd_x+x, lcd_y+y),
                       (lcd_x+x+w, lcd_y+y+h), (0, 255, 0), 1)
  
         # 幅や高さを調べて、液晶の中に表示された数値のサイズと考えられるなら
@@ -168,7 +169,7 @@ for (i, image_path) in enumerate(image_paths):
             if h > height / 2:
             
                 # 四角描画
-                cv2.rectangle(resized_image, (lcd_x+x, lcd_y+y),
+                cv2.rectangle(image_for_checking, (lcd_x+x, lcd_y+y),
                               (lcd_x+x+w, lcd_y+y+h), (0, 255, 0), 2)
                 
                 # 数値部分を切り取り
@@ -187,7 +188,7 @@ for (i, image_path) in enumerate(image_paths):
                 string = str(int(ondo_dict[x]))
                 
                 # 分類結果を描画
-                cv2.putText(resized_image, string,
+                cv2.putText(image_for_checking, string,
                             (lcd_x+x, lcd_y-2),
                             cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0),2)
                 
@@ -213,7 +214,7 @@ for (i, image_path) in enumerate(image_paths):
     print(csv_list)
     
     # 確認のための画像を表示
-    cv2.imshow('detected', resized_image)
+    cv2.imshow('detected', image_for_checking)
     cv2.waitKey(0)
 
 # csvファイルへ書き込み
