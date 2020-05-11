@@ -9,7 +9,7 @@ This code is based on code in https://github.com/yan9yu/sdr.
 体温測定後スマホなどで写真撮影。後で表計算ソフトでまとめたいときに使うように作成。
 
 
-成形等していないため、真上から撮影する必要があります。
+成形や回転等していないため、真上から撮影し、数字は垂直の必要があります。
 
 ![検知結果](https://github.com/monoxit/Thermometer-OCR/blob/master/images/taionkei.jpg)
 
